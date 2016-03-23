@@ -16,7 +16,7 @@ def get_tweet(nb_docs):
     print("-> Récupération des tweets...")
     client = MongoClient()
     
-    col_twitter = client.twitter.twitter
+    col_twitter = client.projet_specifique.tweets
     #tweet géolocalisés
     cursor_tweet = col_twitter.find({"geo":{"$ne":None}},
                                     {'text':1, '_id':1,

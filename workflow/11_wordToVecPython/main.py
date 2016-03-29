@@ -12,15 +12,22 @@ import pandas as pd
 import scipy.cluster.hierarchy as sch
 import os
 
+from collections import Counter
+import math
+
 def get_tweet(nb_docs):
     print("-> Récupération des tweets...")
     client = MongoClient()
     
     col_twitter = client.projet_specifique.tweets
     #tweet géolocalisés
-    cursor_tweet = col_twitter.find({"geo":{"$ne":None}},
+    if False:
+        cursor_tweet = col_twitter.find({"geo":{"$ne":None}},
                                     {'text':1, '_id':1,
                                     "geo":1, "user.id_str":1})
+    else:
+        cursor_tweet = col_twitter.find({},{'text':1, '_id':1})
+    
 
     label_tweet = []
     text_tweet = []
@@ -35,43 +42,74 @@ def get_tweet(nb_docs):
 
         label_tweet.append(tweet['_id'])
         text_tweet.append(tweet['text'])
-        geo_tweet.append(tweet['geo'])
-        userid_tweet.append(tweet['user']['id_str'])
+        #geo_tweet.append(tweet['geo'])
+        #userid_tweet.append(tweet['user']['id_str'])
 
     print("    " + str(len(label_tweet)) + " récupérés")
     print("    ok!")
 
-    return label_tweet, text_tweet, geo_tweet, userid_tweet
+    return label_tweet, text_tweet
 
-def get_dendrogram(data,
-                   method = 'single',
-                   show = False):
+def do_tfidf(text_tweet, model):
+    # text_tweet est une collection de documents
+    # model est le modèle Doc2Vec entraîné
     
-    # Traitement : calcule le dendrogramme associé à la
-    # classification hiérarchique du jeu de données passé
-    # en paramètre.
-    # Si show est vrai, le dendrogramme est affiché, sinon
-    # il est sauvegardé sur le disque (par défaut).
+    # création du vocabulaire
+    
+    _vocab = []
+    tweet_word = {}
+    
+    for tweet in text_tweet:
+        tweet_word.update({tweet : tweet.split()})
+        _vocab.extend(tweet_word[tweet])
+    
+    # unicité
+    vocab = set(_vocab)
+    
+    # idf
+    
+    idf = {}
+    nb_tweet = len(text_tweet)
+    
+    for word in vocab:
+        counter = 0
+        
+        for tweet in text_tweet:
+            if word in tweet_word[tweet]:
+                counter += 1
+        
+        cur_idf = math.log(float(nb_tweet) / counter)
+        idf.update({word:cur_idf})
+    
+    # tfidf + combinaison   
+    print("   combiner les vecteurs...")
 
-    linkage_matrix = sch.linkage(data,
-                                 method = method)
-    
-    plt.figure(figsize = (25, 10))
-    plt.title('Clustering Ascendant Hiérarchique (' + method + ')')
-    plt.xlabel('tweets')
-    plt.ylabel('distance euclidienne')
-    sch.dendrogram(
-        linkage_matrix,
-        leaf_rotation = 90.,
-        leaf_font_size = 8.
-        )
-    
-    plt.savefig('plot_nbdocs_' + str(nb_docs) +
-                '_dim_' + str(vec_dim) +
-                '_cah_' + method + '.png')
-    if show:
-        plt.show()
+    vector_dim = model.syn0.shape[1]
+        
+    data = np.zeros((nb_tweet, vec_dim))
 
+    row_counter = 0
+    
+    for tweet in text_tweet:
+                
+        bag = tweet.split()
+        bag_len = len(bag)
+        
+        count = Counter(bag)
+        
+        weighted_vector = None 
+        
+        for word in bag:
+            # on calcule le tfidf
+            cur_tf = float(count[word]) / bag_len
+            cur_tfidf = idf[word] * cur_tf
+            
+            # on fait la somme pondérée des vecteurs de mot
+            data[row_counter, :] += cur_tfidf * model[word]
+        
+        row_counter += 1
+    
+    return data
 
 def do_doc2vec(label_tweet, text_tweet):
 
@@ -95,12 +133,16 @@ def do_doc2vec(label_tweet, text_tweet):
     if not os.path.exists(filename_cache):
     
         model = Doc2Vec(documents, size = vec_dim,
-                    min_count = 1, workers = 2)
+                    min_count = 1, workers = 4)
     
         model.save(filename_cache)
         
     else:
         model = Doc2Vec.load(filename_cache)
+    
+    
+    print("   tfidf...")
+    data = do_tfidf(text_tweet, model)
     
     mat_docs = np.vstack(model.docvecs)
     
@@ -116,57 +158,13 @@ def do_doc2vec(label_tweet, text_tweet):
     
     return label_doc
 
-def do_geo_clustering(label_tweet, geo_tweet):
-    
-    dataframe = pd.DataFrame(columns=['label','geo_lat','geo_long'])
-    
-    i = 0
-    
-    for (geo, label) in zip(geo_tweet, label_tweet):
-#        print(geo['coordinates'])
-        dataframe.loc[i] = [label, geo['coordinates'][0], geo['coordinates'][1]]
-        i = i + 1
-
-    data = dataframe.as_matrix(['geo_lat', 'geo_long'])
-    
-    model = DBSCAN(eps = 0.001, min_samples = 5)
-    model.fit(data)
-    
-    label_geo = model.labels_
-    print("geo : " + str(len(set(model.labels_))))
-    print("Clustering geo ok !")
-    
-    return label_geo
-
-def compare(label_doc, label_geo):
-    
-    labels = [(doc, geo) for (doc, geo) in zip(label_doc, label_geo)
-              if doc != -1 and geo != -1]
-        
-    np.corrcoef(label_doc, label_geo)
-    
-    print(labels)
-
 
 nb_docs = 1000
 vec_dim = 2
 
-label_tweet, text_tweet, geo_tweet, userid_tweet = get_tweet(0)
+label_tweet, text_tweet = get_tweet(0)
 
 nb_docs = len(label_tweet)
 
-label_geo = do_geo_clustering(label_tweet, geo_tweet)
-
-#print(len(userid_tweet))
-#print(userid_tweet)
-
 label_doc = do_doc2vec(label_tweet, text_tweet)
-
-compare(label_doc, label_geo)
-
-
-#get_dendrogram(mat_docs, method = 'single')
-#get_dendrogram(mat_docs, method = 'complete')
-#get_dendrogram(mat_docs, method = 'ward')
-
 

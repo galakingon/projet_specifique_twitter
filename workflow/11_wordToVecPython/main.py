@@ -120,7 +120,7 @@ def do_tfidf(text_tweet, model):
 
     vector_dim = model.syn0.shape[1]
         
-    data = np.zeros((nb_tweet, vec_dim))
+    data = np.zeros((nb_tweet, vector_dim))
 
     row_counter = 0
     
@@ -253,6 +253,7 @@ if args.filename is not None:
     if args.filename[-4:] == '.csv':
         nom = args.filename[:-4]
         
-    data.to_csv(prefix + nom + '_' + str(args.number) + ext)
+    data.to_csv(prefix + nom + '_' + str(args.number) + ext, index = False)
 else:
-    data.to_csv(prefix + '1x_vecteurs_python_' + str(args.number) + '.csv')
+    data.to_csv(prefix + '1x_vecteurs_' + str(args.number) + '.csv',
+                index = False)

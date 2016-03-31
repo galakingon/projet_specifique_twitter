@@ -1,5 +1,7 @@
 import args
 
-def do_dbscan():
+def do_dbscan(data):
+    
+    
     
     return

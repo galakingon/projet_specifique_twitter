@@ -12,66 +12,174 @@ import pandas as pd
 import scipy.cluster.hierarchy as sch
 import os
 
-def get_tweet(nb_docs):
+from collections import Counter
+import math
+import argparse
+
+# Traitement de la ligne de commande
+
+parser = argparse.ArgumentParser(description =
+                                 'Exécute Doc2Vec sur la base de Tweet')
+
+
+exc_group = parser.add_mutually_exclusive_group()
+exc_group.add_argument('-m', '--mean', help = 'Moyenne les vecteurs de mots',
+                       action = 'store_true')
+exc_group.add_argument('-s', '--sum', help = 'Somme les vecteurs de mots',
+                       action = 'store_true')
+exc_group.add_argument('-t', '--tfidf', help = 'Effectue la somme pondérée (tfidf) des vecteurs de mots',
+                       action = 'store_true')
+
+parser.add_argument('-d', '--dim', help = 'Dimension des vecteurs de mots',
+                        action ='store', default = 2, type = int)
+
+parser.add_argument('-c', '--coeff', help = 'Associe un coefficient aux hashtags',
+                        action ='store', default = 1, type = int)
+
+parser.add_argument('-a', '--amount', help = 'Nombre de tweet à considérer (0 prend toute la base)',
+                        action ='store', default = 0, type = int)
+
+parser.add_argument('-f', '--filename', help = 'Nom de fichier en sortie',
+                        action ='store', default = None)
+
+parser.add_argument('-n', '--number', help = 'Numéro associé à l\'experience courante',
+                        action ='store', default = 0, type = int)
+
+
+args = parser.parse_args()
+
+def get_tweet():
     print("-> Récupération des tweets...")
     client = MongoClient()
     
     col_twitter = client.projet_specifique.tweets
     #tweet géolocalisés
-    cursor_tweet = col_twitter.find({"geo":{"$ne":None}},
+    if False:
+        cursor_tweet = col_twitter.find({"geo":{"$ne":None}},
                                     {'text':1, '_id':1,
                                     "geo":1, "user.id_str":1})
+    else:
+        cursor_tweet = col_twitter.find({},{'text':1, '_id':1})
+    
+    if args.amount > 0:
+        cursor_tweet.limit(args.amount)
 
     label_tweet = []
     text_tweet = []
-    geo_tweet = []
-    userid_tweet = []
     
     i = 0
     for tweet in cursor_tweet:
-        if nb_docs != 0 and i >= nb_docs:
-            break
         i = i + 1
 
         label_tweet.append(tweet['_id'])
         text_tweet.append(tweet['text'])
-        geo_tweet.append(tweet['geo'])
-        userid_tweet.append(tweet['user']['id_str'])
+        #geo_tweet.append(tweet['geo'])
+        #userid_tweet.append(tweet['user']['id_str'])
 
     print("    " + str(len(label_tweet)) + " récupérés")
     print("    ok!")
 
-    return label_tweet, text_tweet, geo_tweet, userid_tweet
+    return label_tweet, text_tweet
 
-def get_dendrogram(data,
-                   method = 'single',
-                   show = False):
-    
-    # Traitement : calcule le dendrogramme associé à la
-    # classification hiérarchique du jeu de données passé
-    # en paramètre.
-    # Si show est vrai, le dendrogramme est affiché, sinon
-    # il est sauvegardé sur le disque (par défaut).
+def is_hashtag(word):
+    return True if word[0] == '#' else False
 
-    linkage_matrix = sch.linkage(data,
-                                 method = method)
+def do_tfidf(text_tweet, model):
+    # text_tweet est une collection de documents
+    # model est le modèle Doc2Vec entraîné
     
-    plt.figure(figsize = (25, 10))
-    plt.title('Clustering Ascendant Hiérarchique (' + method + ')')
-    plt.xlabel('tweets')
-    plt.ylabel('distance euclidienne')
-    sch.dendrogram(
-        linkage_matrix,
-        leaf_rotation = 90.,
-        leaf_font_size = 8.
-        )
+    # création du vocabulaire
     
-    plt.savefig('plot_nbdocs_' + str(nb_docs) +
-                '_dim_' + str(vec_dim) +
-                '_cah_' + method + '.png')
-    if show:
-        plt.show()
+    _vocab = []
+    tweet_word = {}
+    
+    for tweet in text_tweet:
+        tweet_word.update({tweet : tweet.split()})
+        _vocab.extend(tweet_word[tweet])
+    
+    # unicité
+    vocab = set(_vocab)
+    
+    # idf
+    
+    idf = {}
+    nb_tweet = len(text_tweet)
+    
+    for word in vocab:
+        counter = 0
+        
+        for tweet in text_tweet:
+            if word in tweet_word[tweet]:
+                counter += 1
+        
+        cur_idf = math.log(float(nb_tweet) / counter)
+        idf.update({word:cur_idf})
+    
+    # tfidf + combinaison   
+    print("   combiner les vecteurs...")
 
+    vector_dim = model.syn0.shape[1]
+        
+    data = np.zeros((nb_tweet, vector_dim))
+
+    row_counter = 0
+    
+    for tweet in text_tweet:
+                
+        bag = tweet.split()
+        bag_len = len(bag)
+        
+        count = Counter(bag) 
+        
+        for word in bag:
+            # on calcule le tfidf
+            cur_tf = float(count[word]) / bag_len
+            cur_tfidf = idf[word] * cur_tf
+            cur_pond = 1
+            
+            if is_hashtag(word):
+                cur_pond = args.coeff
+            
+            # on fait la somme pondérée des vecteurs de mot
+            data[row_counter, :] += cur_tfidf * model[word]
+        
+        row_counter += 1
+    
+    return data
+
+def do_mean(text_tweet, model, mean = False):
+    
+    vector_dim = model.syn0.shape[1]
+    nb_tweet = len(text_tweet)
+    
+    data = np.zeros((nb_tweet, vector_dim))
+    
+    row_counter = 0
+    
+    for tweet in text_tweet:
+        
+        bag = tweet.split()
+        sum_pond = 0
+        
+        for word in bag:
+            cur_pond = 1
+            
+            if is_hashtag(word):
+                cur_pond = args.coeff
+            
+            if mean:
+                sum_pond += cur_pond
+            
+            # on fait la somme pondérée des vecteurs de mot
+            data[row_counter, :] += model[word] * cur_pond
+        
+        if mean:
+            # on divise par la pondération
+            data[row_counter, :] /= float(sum_pond)
+        
+        row_counter += 1
+    
+    return data
 
 def do_doc2vec(label_tweet, text_tweet):
 
@@ -88,85 +196,64 @@ def do_doc2vec(label_tweet, text_tweet):
 
     model = None
 
-    filename_cache = ('model_nbdocs_' + str(nb_docs) +
-                          '_dim_' + str(vec_dim) +
+    filename_cache = ('model_nbdocs_' + str(args.amount) +
+                          '_dim_' + str(args.dim) +
                           '.doc2vec')
     
     if not os.path.exists(filename_cache):
     
-        model = Doc2Vec(documents, size = vec_dim,
-                    min_count = 1, workers = 2)
+        model = Doc2Vec(documents, size = args.dim,
+                    min_count = 1, workers = 4)
     
         model.save(filename_cache)
         
     else:
         model = Doc2Vec.load(filename_cache)
     
-    mat_docs = np.vstack(model.docvecs)
+    data = None
     
-    print('   mat_docs.shape = ' + str(mat_docs.shape))
+    if args.coeff != 1:
+        print("    pondération des #tags : " + str(args.coeff))
+    
+    if args.tfidf:
+        print("    tfidf...")
+        data = do_tfidf(text_tweet, model)
+    elif args.mean:
+        print("    mean...")
+        data = do_mean(text_tweet, model, True)
+    else:
+        print("    sum...")
+        data = do_mean(text_tweet, model)
+    
+    
     print("    ok!")
     
-    model = DBSCAN(eps = 0.01, min_samples = 5)
-    model.fit(mat_docs)
+    # rassembler les labels de chaque tweet
+    # avec les vecteurs correspondants
     
-    label_doc = model.labels_
-    print("doc : " + str(len(set(model.labels_))))
-    print("Clustering doc ok !")
+    data = pd.DataFrame(data)
     
-    return label_doc
+    final_data = pd.DataFrame({'id' : label_tweet})
+    final_data = pd.concat([final_data, data], axis = 1)
+    
+    return final_data
 
-def do_geo_clustering(label_tweet, geo_tweet):
-    
-    dataframe = pd.DataFrame(columns=['label','geo_lat','geo_long'])
-    
-    i = 0
-    
-    for (geo, label) in zip(geo_tweet, label_tweet):
-#        print(geo['coordinates'])
-        dataframe.loc[i] = [label, geo['coordinates'][0], geo['coordinates'][1]]
-        i = i + 1
 
-    data = dataframe.as_matrix(['geo_lat', 'geo_long'])
-    
-    model = DBSCAN(eps = 0.001, min_samples = 5)
-    model.fit(data)
-    
-    label_geo = model.labels_
-    print("geo : " + str(len(set(model.labels_))))
-    print("Clustering geo ok !")
-    
-    return label_geo
+label_tweet, text_tweet = get_tweet()
+data = do_doc2vec(label_tweet, text_tweet)
 
-def compare(label_doc, label_geo):
+# sauvegarder le fichier
+
+prefix = '../../out/'
+
+if args.filename is not None:
+    nom = args.filename
+    ext = '.csv'
     
-    labels = [(doc, geo) for (doc, geo) in zip(label_doc, label_geo)
-              if doc != -1 and geo != -1]
+    if args.filename[-4:] == '.csv':
+        nom = args.filename[:-4]
         
-    np.corrcoef(label_doc, label_geo)
-    
-    print(labels)
-
-
-nb_docs = 1000
-vec_dim = 2
-
-label_tweet, text_tweet, geo_tweet, userid_tweet = get_tweet(0)
-
-nb_docs = len(label_tweet)
-
-label_geo = do_geo_clustering(label_tweet, geo_tweet)
-
-#print(len(userid_tweet))
-#print(userid_tweet)
-
-label_doc = do_doc2vec(label_tweet, text_tweet)
-
-compare(label_doc, label_geo)
-
-
-#get_dendrogram(mat_docs, method = 'single')
-#get_dendrogram(mat_docs, method = 'complete')
-#get_dendrogram(mat_docs, method = 'ward')
-
-
+    data.to_csv(prefix + nom + '_' + str(args.number) + ext, index = False)
+else:
+    data.to_csv(prefix + '1x_vecteurs_' + str(args.number) + '.csv',
+                index = False)

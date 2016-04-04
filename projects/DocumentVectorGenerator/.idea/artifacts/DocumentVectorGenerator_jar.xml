@@ -1,0 +1,9 @@
+<component name="ArtifactManager">
+  <artifact type="jar" build-on-make="true" name="DocumentVectorGenerator:jar">
+    <output-path>$PROJECT_DIR$/../../projet_specifique_twitter/workflow/10_wordToVecJava</output-path>
+    <root id="archive" name="DocumentVectorGenerator.jar">
+      <element id="module-output" name="DocumentVectorGenerator" />
+      <element id="dir-copy" path="$PROJECT_DIR$/src" />
+    </root>
+  </artifact>
+</component>

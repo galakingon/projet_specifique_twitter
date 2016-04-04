@@ -6,5 +6,5 @@ args[2] out file name
 args[3] [tfidf/hashtags] ponderation
 args[4] hashtags file (not available yet)
 
-java -jar DocumentVectorGenerator.jar ../../data/vec.csv ../../data/tweets_processed.csv ../../out/vecteurs_java_tfidf.csv tfidf
+java -jar DocumentVectorGenerator.jar ../../data/vec.csv ../../data/tweets.txt ../../out/vecteurs_java_tfidf.csv tfidf
 

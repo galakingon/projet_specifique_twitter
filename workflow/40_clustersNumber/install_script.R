@@ -1,0 +1,6 @@
+install.packages("stats")
+install.packages("ggplot2")
+install.packages("dbscan")
+install.packages("kernlab")
+install.packages("NbClust")
+install.packages("cluster")

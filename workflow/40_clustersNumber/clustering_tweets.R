@@ -18,6 +18,7 @@ kmeansBIC = function(fit){
 
 
 setwd(dir = "../../out")
+
 library(stats)
 library(ggplot2)
 library(dbscan)
@@ -28,19 +29,22 @@ filename <- args[1]
 tweets = read.csv(file = filename, header=TRUE, nrow=as.numeric(args[2]), row.names=1)
 tweets <-tweets[complete.cases(tweets),]
 
+#var<-apply(tweets, 2, var)
+#tvar<-sum(var)
+
 result_kmeans = data.frame(nb_clusters=c(), elbow=c(), AIC=c(), BIC=c())
 result_dbscan = data.frame(eps=c(), nb_clusters=c())
 
-for(i in 1:100)
+for(i in 2:100)
 {
   fit = kmeans(x=tweets, centers=i)
   aic = kmeansAIC(fit)
   bic=  kmeansBIC(fit)
-  elbow = fit$betweenss
+  elbow = fit$tot.withinss
   result_kmeans<-rbind(result_kmeans, data.frame(nb_clusters=c(i), elbow=c(elbow), AIC=c(aic), BIC=c(bic)))
 }
 
-for(y in seq(0 , 5 , by=0.01))
+for(y in seq(0 , 2 , by=0.01))
 {
   fit = dbscan(x = tweets, eps = y)
   result_dbscan<-rbind(result_dbscan, data.frame(eps=c(y), nb_clusters=c(length(unique(fit$cluster)))))

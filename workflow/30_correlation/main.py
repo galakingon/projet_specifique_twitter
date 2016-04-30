@@ -9,14 +9,24 @@ import seaborn as sb
 parser = argparse.ArgumentParser(description =
                                  'Calcul et affiche la matrice de corrélation entre les deux clusters passés en argument.')
 
-parser.add_argument('clusterRef', help = 'Clustering de référence')
-parser.add_argument('clusterComp', help = 'Clustering à comparer')
+group_in = parser.add_argument_group()
 
-parser.add_argument('-f', '--filename', help = 'Nom de fichier en sortie',
+parser.add_argument('-r', '--cluster_ref', help = 'Clusters de référence',
+                    action = 'store', default = None)
+
+parser.add_argument('-c', '--cluster_comp', help = 'Clusters à comparer',
+                    action = 'store', default = None)
+
+parser.add_argument('-F', '--filename_out', help = 'Nom de fichier en sortie',
                         action ='store', default = None)
 
-parser.add_argument('-n', '--number', help = 'Numéro associé à l\'experience courante',
+parser.add_argument('-n', '--number_in', help = 'Numéro associé aux deux experiences courantes en entrée',
+                        action ='store', default = [0, 0],
+                        type = int, nargs = 2)
+
+parser.add_argument('-N', '--number_out', help = 'Numéro associé à l\'experience courante en sortie',
                         action ='store', default = 0, type = int)
+
 
 args = parser.parse_args()
 
@@ -58,18 +68,40 @@ def do_corr(cluster_data1, cluster_data2, method = 'pearson'):
 
 prefixe = '../../out/'
 
-data1 = pd.read_csv(prefixe + args.clusterRef)
-data2 = pd.read_csv(prefixe + args.clusterComp)
+filename_base = '2x_clusters_'
+ext = '.csv'
+
+
+if args.cluster_ref is None:
+    filename1 = filename_base + str(args.number_in[0]) + ext
+else:
+    filename1 = args.cluster_ref
+    
+if args.cluster_comp is None:
+    filename2 = filename_base + str(args.number_in[1]) + ext
+else:
+    filename2 = args.cluster_comp
+
+data1 = pd.read_csv(prefixe + filename1)
+data2 = pd.read_csv(prefixe + filename2)
 
 cluster_data1 = add_cluster_col(data1, 1)
 cluster_data2 = add_cluster_col(data2, 2)
 
+print("-> Do correlation...")
+
 corr_matrix = do_corr(cluster_data1, cluster_data2)
 
-print(corr_matrix)
+#print(corr_matrix)
+
+print("    heatmap...")
 
 sb.heatmap(corr_matrix)
 
-module = '30_correlation_' if args.filename is None else args.filename
+print("    ok !")
 
-plt.savefig(prefixe + module + str(args.number) + '.pdf', format = 'pdf')
+module = '30_correlation_' if args.filename_out is None else args.filename_out
+
+plt.gcf().subplots_adjust(bottom=0.15)
+plt.savefig(prefixe + module + str(args.number_out) + '.pdf',
+            format = 'pdf')

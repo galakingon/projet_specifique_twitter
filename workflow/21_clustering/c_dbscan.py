@@ -21,6 +21,4 @@ def do_dbscan(data):
     
     print("   ok !")
     
-    print(data)
-    
-    return
+    return data

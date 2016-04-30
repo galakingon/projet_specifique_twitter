@@ -24,8 +24,8 @@ def init():
     
     global dict_distances
     
-    dict_distances = {'euclidienne' : sp_d.euclidean,
-                     'manhattan' : sp_d.cityblock,
+    dict_distances = {'euclidean' : sp_d.euclidean,
+                     'cityblock' : sp_d.cityblock,
                      'cosine' : sp_d.cosine,
                      'hamming' : sp_d.hamming}
     
@@ -38,26 +38,36 @@ def init():
     
     # par défaut, cluster sur tout sauf l'id
     
-    parser.add_argument('-f', '--filename',
+    parser.add_argument('-f', '--filename_in',
                         help = 'Fichier contenant la collection des vecteurs de tweet',
                         action = 'store', default = None)
     
+    parser.add_argument('-n', '--number_in', help = 'Numéro associé à l\'experience courante en entrée',
+                        action ='store', default = 0, type = int)
+    
+    parser.add_argument('-F', '--filename_out',
+                        help = 'Fichier de sortie',
+                        action = 'store', default = None)
+    
+    parser.add_argument('-N', '--number_out', help = 'Numéro associé à l\'experience courante en sortie',
+                        action ='store', default = 0, type = int)
+    
+    
     parser.add_argument('-m', '--method', help = 'Méthode de clustering',
-                        action = 'store', choices = ['dbscan'],
+                        action = 'store',
+                        choices = ['dbscan',
+                                   'spectral_clustering'],
                         required = True)
     
     parser.add_argument('-d', '--distance', help = 'Distance utilisée',
-                        action = 'store',
-                        choices = dict_distances.keys())
+                        action = 'store', choices = dict_distances.keys(),
+                        default = 'euclidean')
     
     parser.add_argument('-p', '--parameters', help = 'Liste des paramètres associés à l\'algorithme choisi via --method',
                         action = 'store', nargs = '*', default = [])
     
     parser.add_argument('-o', '--output', help = 'Nom de fichier en sortie',
                         action ='store', default = None)
-
-    parser.add_argument('-n', '--number', help = 'Numéro associé à l\'experience courante',
-                        action ='store', default = 0, type = int)
     
     args = parser.parse_args()
     
@@ -67,10 +77,8 @@ def init():
         dict_parametres = {}
     else:
         dict_parametres = get_parametres(args.parameters)
-    
-    print (dict_parametres)
        
-       
+
 def associer_param(param, param_default = 0):
     
     if param in dict_parametres:
@@ -78,5 +86,12 @@ def associer_param(param, param_default = 0):
     else:
         return param_default
     
+    
+def infos_clusters(data):
+    
+    val_uniques = pd.unique(data['cluster'])
+    
+    print('Pour ' + str(data.shape[1]) + ' exemples, ' +
+          str(len(val_uniques)))
     
     

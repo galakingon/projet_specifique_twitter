@@ -8,10 +8,10 @@ data[['numero_exp']] = factor(data[['numero_exp']])
 
 plot <- ggplot(data, aes(x = numero_exp, y = nombre_valeurs_supp), group = 1)
 plot <- plot + geom_point(size = 3)
-plot <- plot + labs(x = "Paire de cluster", y = "Corrélation moyenne", title = "Titre")
+plot <- plot + labs(x = "Méthodes comparées", y = "Paire de clusters dont corrélation > 0.5")
 
 plot <- plot + theme_bw() + theme(legend.position=c(0.9, 0.75))
 
 print(plot)
 
-ggsave(file = "..\\..\\out\\results_stats.pdf", width=5, height=3)
+ggsave(file = "..\\..\\out\\results_stats.pdf", width=6, height=4)

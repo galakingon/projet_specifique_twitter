@@ -38,9 +38,9 @@ WORD2VEC -train $(DATA)/$(TWEETS) -output $(DATA)/$(WVEC) -size $(DIM)
 if [$(PONDER)=hashtags]
 then 
 	mongo --quiet $(EXTRACT_HASHTAGS) > $(DATA)/$(HASHTAGS)
-	$(JAVA) $(DATA)/$(WVEC) $(DATA)/$(TWEETS) $(OUT)/vecteurs_java_$(PONDER).csv -$(PONDER) $(DATA)/$(HASHTAGS)
+	$(JAVA) $(DATA)/$(WVEC) $(DATA)/$(TWEETS) $(OUT)/vecteurs_java_$(PONDER).csv $(PONDER) $(DATA)/$(HASHTAGS)
 elif [$(PONDER)=tfidf]
 then	
-	$(JAVA) $(DATA)/$(WVEC) $(DATA)/$(TWEETS) $(OUT)/vecteurs_java_$(PONDER).csv -$(PONDER)
+	$(JAVA) $(DATA)/$(WVEC) $(DATA)/$(TWEETS) $(OUT)/vecteurs_java_$(PONDER).csv $(PONDER)
 
 

@@ -82,7 +82,7 @@ def get_tweet():
     return label_tweet, text_tweet
 
 def is_hashtag(word):
-    return True if word[0] == '#' else False
+    return True if '#' in word else False
 
 def do_tfidf(text_tweet, model):
     # text_tweet est une collection de documents
@@ -141,7 +141,7 @@ def do_tfidf(text_tweet, model):
                 cur_pond = args.coeff
             
             # on fait la somme pondérée des vecteurs de mot
-            data[row_counter, :] += cur_tfidf * model[word]
+            data[row_counter, :] += cur_pond * cur_tfidf * model[word]
         
         row_counter += 1
     

@@ -13,7 +13,7 @@ def do_dbscan(data):
     
     model = cluster.DBSCAN(eps = eps,
                            min_samples = min_pts,
-                           metric = args.dict_distances[args.args.distance])
+                           metric = args.args.distance)
     
     labels = model.fit_predict(data)
     

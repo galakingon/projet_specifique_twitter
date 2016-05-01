@@ -61,7 +61,7 @@ for numero1 in range(len(params_aggregation)):
 
 data.to_csv(prefixe + "final.csv", index = False)
 
-subp.call('python ../30_correlation/main.py' +
+subp.call('Rscript ../30_correlation/main.py' +
                   ' -n ' + str(numero1 + 1) + ' ' + str(numero2 + 1) +
                   ' -N ' + str(numero1 + 1) + str(numero2 + 1) +
                   ' -s 1')

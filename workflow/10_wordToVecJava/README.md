@@ -8,9 +8,3 @@ args[4] hashtags file (not available yet)
 
 java -jar DocumentVectorGenerator.jar ../../data/word_vectors ../../data/tweets.txt ../../out/vecteurs_java_tfidf.csv tfidf
 
-
-//cursor = db.getCollection('tweets').find({},{'text':1})
-
-//while(cursor.hasNext()){
-    //print(cursor.next());
-//}

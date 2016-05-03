@@ -1,0 +1,14 @@
+nombre de tweets initial : totalité de la plus grosse base 
+nettoyage : stopwords (french), ponctuation, stemming, url, lower case, tweets en double
+word2vec : google, dimension 100
+doc2vec : moyenne pondérée des word vectors par le tfidf 
+clustering : 10000 tweets, fuzzy c means, 5 clusters, membership exponential : 1,9 
+
+
+observations : on commence à entrevoir les topics
+- les villes
+- le foot  
+- l'emploi
+- les attentats 
+... 
+

@@ -2,6 +2,8 @@ library(rmongodb)
 library(tm)
 library(SnowballC)
 
+setwd("../../data")
+
 frenchStemming = function(x)
 {
   vec <- strsplit(x, " ")

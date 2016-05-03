@@ -1,30 +1,13 @@
-library(rmongodb)
+library(wordcloud)
 library(tm)
-library(SnowballC)
-
-frenchStemming = function(x)
-{
-  vec <- strsplit(x, " ")
-  stemmed <- wordStem(unlist(vec), "french")
-  while(!isTRUE(all.equal(unlist(vec), unlist(stemmed))))
-  {
-    vec <- stemmed
-    stemmed <- wordStem(unlist(vec), "french")
-  }
-  vec <- paste(unlist(vec), collapse = " ")
-  return(paste(vec, "\n\r", sep = " "))
-}
-
+library(cluster)
 
 args <- commandArgs(trailingOnly =TRUE)
-cleaning_options = args[1]
+filename = args[1]
+nb_clusters = args[2]
+nb_tweets = args[3]
 
-mongo <- mongo.create()
-tweets <- data.frame()
-if(mongo.is.connected(mongo) == TRUE)
-{
-  tweets<- mongo.find.all(mongo, "projet_specifique.tweets", fields='{"_id":1, "text":1}', data.frame = TRUE)
-}
+tweets <- read.csv(filename, header = TRUE, sep = ",", )
 
 tweets <- tweets[complete.cases(tweets),]
 tweets <- tweets[!duplicated(tweets$text),]
